@@ -92,3 +92,20 @@ Max run value not recorded. Two wires straight into Stairwell Off, without OR: u
 - Dashboard: `ConfigMap.grafana.dashboard.loxone.valves_temperature_humidity.yaml` in homelab. Its "Fan stop level" still draws avg+3, and the stop is now avg+2. Change only with the user's go-ahead.
 - Vacuum c102gl: siid 4 / piid 41 `no-water-info`: 0 none, 2 seen after a run, cleared when cleaning starts; value 1 likely means dismissed, from the Dreame integration, not confirmed for c102gl.
 - How to answer on Loxone: [the no-guessing note](../../raw/2026-11-04-loxone-wiring-answers-no-guessing-no-unrequested-blocks.md).
+
+## MQTT subscription into Command Recognition
+
+Setup: one subscription on `iot/miot-bridge/devices/notifications`, feeding one Command Recognition block per property. Example pattern: `deviceId=<id>\n<service>:<property>=\v`. Only QoS 1 is available in the block [user].
+
+- [docs] Subscription value changes are evaluated at most every 2 s. Changes arriving sooner are cached, and only the most recent one is processed when the interval ends. Anything older in that window is lost without any error. https://www.loxone.com/enen/kb/mqtt
+- [docs] Limit: 16 subscriptions and 16 publishes, so one topic per property is not an option. Gen. 1 is not supported.
+- [docs] Command Recognition: `\v` extracts a number, `\iText\i` jumps to just after a string, and `\n` matches a newline.
+- [guess] The 2 s window applies per subscription. The docs imply it but do not say so.
+- [measured] The broker is not the point of loss: 11 messages arrived in MQTT Explorer while Loxone missed some, and the Loxone client showed `dropped_msgs=0`.
+- [user] 500 ms apart: a value was lost. About 1 s apart, 3 values via `mosquitto_pub`: all arrived.
+- [guess] 1 s worked only because process start-up made each gap slightly over 1 s, so the next message arrived after the window closed. Do not rely on it.
+- [guess] 1.5 s apart: the 2 s rule predicts every 4th message is lost. That matches `brush-cleaner-10:brush-life-level`, 8th of 11 at 10.5 s after a restart, staying wrong while Explorer showed it and its pattern parsed test messages fine.
+- [measured] 3 s apart, 2026-11-04: all 11 publishes exactly 3.0 s apart. Whether Loxone receives all 11 at 3 s after a restart was not confirmed.
+- [user] A single message always landed: one REST GET moved Loxone from 80 to 97.
+- [guess] Several properties in one message might parse, using repeated `deviceId=<id>\n<property>=<value>` pairs. Untested. Maximum text length is not in the docs. If this works, one message every 3 s carries any number of properties.
+- A value lost this way stays wrong until it changes again, because the bridge only publishes on change. For a consumable that can be days.
