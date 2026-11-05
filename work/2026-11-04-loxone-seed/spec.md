@@ -13,6 +13,40 @@ Collected 2026-11-04 from earlier agent sessions. Living reference: update it as
 
 Native blocks, no Program block. Not yet proven over several showers.
 
+```mermaid
+flowchart TD
+    RH["Touch: RH"]
+    AVG1["Moving Average<br/>C = 60 s, N = 3, Rem"]
+    SUB1["Subtract<br/>V1 − V2"]
+    TH1["Threshold Switch<br/>Von = 3, Voff = 1"]
+    AVG2["Moving Average<br/>C = 600 s, N = 144, Rem"]
+    SUB2["Subtract<br/>V1 − V2"]
+    TH2["Threshold Switch<br/>Von = 5, Voff = 2, pulse 0.1 s"]
+    BTN["Manual button"]
+    SW["Stairwell Light Switch<br/>Don = 210 s, Rem"]
+    DELAY["Switch-On Delay<br/>max run [s]"]
+    EDGE["Edge Detection<br/>On output, Pd = 0.1 s"]
+    FAN["Fan + Influx loxone_fan.state"]
+
+    RH --> AVG1
+    RH -->|V1| SUB1
+    AVG1 -->|V2| SUB1
+    SUB1 --> TH1
+    RH --> AVG2
+    RH -->|V1| SUB2
+    AVG2 -->|V2| SUB2
+    SUB2 --> TH2
+    TH1 -->|"On pulse → On"| SW
+    TH2 -->|"Off pulse → Off"| SW
+    BTN -->|Tr| SW
+    SW -->|O| DELAY
+    DELAY --> EDGE
+    EDGE -->|"On pulse → Off"| SW
+    SW -->|O| FAN
+```
+
+Max run value not recorded. Two wires straight into Stairwell Off, without OR: untested [guess].
+
 - RH (Touch) → Moving Average C=60 s, N=3, Rem → Subtract V2; RH → Subtract V1 → Threshold Switch Von=3, Voff=1. Its **On** pulse → Stairwell **On**.
 - RH → Moving Average C=600 s, N=144, Rem → Subtract V2; RH → Subtract V1 → Threshold Switch Von=5, Voff=2, pulse 0.1 s. Its **Off** pulse → Stairwell **Off**.
 - Stairwell **O** → Switch-On Delay (max run, seconds) → Edge Detection **On** output, Pd=0.1 s → Stairwell **Off**.
